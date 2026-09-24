@@ -1,0 +1,155 @@
+# =============================================================================
+# FRAUD & RISK PLATFORM
+# pyproject.toml
+#
+# Project foundation and Python package configuration.
+# Heavy runtime dependencies will be introduced incrementally
+# as architecture and workload requirements are validated.
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# Build System
+# -----------------------------------------------------------------------------
+# Defines how the Python package is built and installed.
+# Setuptools is intentionally kept simple at the foundation layer.
+# -----------------------------------------------------------------------------
+
+[build-system]
+requires = [
+    "setuptools>=68",
+    "wheel",
+]
+build-backend = "setuptools.build_meta"
+
+
+# -----------------------------------------------------------------------------
+# Project Metadata
+# -----------------------------------------------------------------------------
+# Core package metadata following PEP 621.
+# -----------------------------------------------------------------------------
+
+[project]
+name = "fraud-risk-platform"
+version = "0.1.0"
+
+description = "Financial Fraud and Risk Intelligence Platform"
+
+readme = "README.md"
+
+requires-python = ">=3.10"
+
+license = { text = "MIT" }
+
+authors = [
+    { name = "Ebram Rafat" },
+]
+
+keywords = [
+    "fraud-detection",
+    "risk-intelligence",
+    "machine-learning",
+    "data-engineering",
+    "mlops",
+    "real-time-risk",
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Runtime dependencies are intentionally empty at Layer 1.
+# They will be added only when required by an implemented layer.
+dependencies = []
+
+
+# -----------------------------------------------------------------------------
+# Development Dependencies
+# -----------------------------------------------------------------------------
+# Development-only tooling.
+#
+# These are managed as uv dependency groups rather than runtime dependencies.
+# This keeps the production package lightweight.
+# -----------------------------------------------------------------------------
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+
+# -----------------------------------------------------------------------------
+# Package Discovery
+# -----------------------------------------------------------------------------
+# Source layout:
+#
+# fraud-risk-platform/
+# └── src/
+#     └── fraud_platform/
+#
+# Setuptools will automatically discover packages under src/.
+# -----------------------------------------------------------------------------
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+
+# -----------------------------------------------------------------------------
+# Ruff
+# -----------------------------------------------------------------------------
+# Static analysis and code-quality configuration.
+# -----------------------------------------------------------------------------
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+src = [
+    "src",
+    "tests",
+]
+
+
+# -----------------------------------------------------------------------------
+# Ruff Lint Rules
+# -----------------------------------------------------------------------------
+# E   : pycodestyle errors
+# F   : Pyflakes
+# I   : Import sorting
+# UP  : pyupgrade
+# B   : flake8-bugbear
+# SIM : Simplification rules
+# -----------------------------------------------------------------------------
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "UP",
+    "B",
+    "SIM",
+]
+
+
+# -----------------------------------------------------------------------------
+# Pytest
+# -----------------------------------------------------------------------------
+# Test discovery and source-path configuration.
+# -----------------------------------------------------------------------------
+
+[tool.pytest.ini_options]
+
+testpaths = [
+    "tests",
+]
+
+pythonpath = [
+    "src",
+]
