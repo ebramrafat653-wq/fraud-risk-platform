@@ -8,7 +8,7 @@ import logging
 
 import pytest
 
-from fraud_platform.common.logging import (
+from fraud_risk_platform.common.logging import (
     get_logger,
     is_configured,
     setup_logging,
@@ -30,7 +30,7 @@ def reset_logging_state() -> None:
         handler.close()
 
     setup_module = __import__(
-        "fraud_platform.common.logging",
+        "fraud_risk_platform.common.logging",
         fromlist=["_configured"],
     )
 
@@ -39,10 +39,10 @@ def reset_logging_state() -> None:
 
 def test_get_logger_returns_named_logger() -> None:
     """Verify that get_logger returns the requested named logger."""
-    logger = get_logger("fraud_platform.test")
+    logger = get_logger("fraud_risk_platform.test")
 
     assert isinstance(logger, logging.Logger)
-    assert logger.name == "fraud_platform.test"
+    assert logger.name == "fraud_risk_platform.test"
 
 
 def test_get_logger_does_not_configure_logging() -> None:
@@ -52,7 +52,7 @@ def test_get_logger_does_not_configure_logging() -> None:
     handlers_before = list(root_logger.handlers)
     level_before = root_logger.level
 
-    get_logger("fraud_platform.test")
+    get_logger("fraud_risk_platform.test")
 
     assert root_logger.handlers == handlers_before
     assert root_logger.level == level_before
@@ -122,7 +122,7 @@ def test_setup_logging_supports_file_logging(tmp_path) -> None:
     assert len(root_logger.handlers) == 2
     assert log_file.parent.exists()
 
-    logger = get_logger("fraud_platform.test")
+    logger = get_logger("fraud_risk_platform.test")
     logger.info("test message")
 
     for handler in root_logger.handlers:

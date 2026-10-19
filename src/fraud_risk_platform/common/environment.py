@@ -1,5 +1,5 @@
 # =============================================================================
-# src/fraud_platform/common/colab_setup.py
+# src/fraud_risk_platform/common/environment.py
 # =============================================================================
 """
 Google Colab and runtime environment integration.
@@ -62,7 +62,7 @@ def setup_colab_environment() -> None:
     This function performs the following steps if running in Colab:
     1. Resolves the project root (either from an environment variable or
        a default Colab path).
-    2. Adds the `src` directory to `sys.path` so `fraud_platform` can be
+    2. Adds the `src` directory to `sys.path` so `fraud_risk_platform` can be
        imported without installing the package.
     3. Sets the `FRAUD_PLATFORM_ROOT` environment variable so that
        `settings.py` resolves paths correctly.
@@ -75,25 +75,58 @@ def setup_colab_environment() -> None:
     # -------------------------------------------------------------------------
     # Resolve Project Root
     # -------------------------------------------------------------------------
-    project_root_str = os.getenv("FRAUD_PLATFORM_ROOT")
+    frp_data_root_str = os.getenv("FRP_DATA_ROOT")
+    fraud_platform_root_str = os.getenv("FRAUD_PLATFORM_ROOT")
 
-    if project_root_str and project_root_str.strip():
-        project_root = Path(project_root_str).expanduser().resolve()
-    else:
-        # Fallback to the default Colab project path
-        project_root = Path(_DEFAULT_COLAB_PROJECT_ROOT).resolve()
+    project_root: Path | None = None
+
+    # 1. First check FRP_DATA_ROOT
+    if frp_data_root_str and frp_data_root_str.strip():
+        data_path = Path(frp_data_root_str.strip()).expanduser().resolve()
+        candidate = data_path.parent if data_path.name == "data" else data_path
+        if (candidate / _PROJECT_MARKER).is_file():
+            project_root = candidate
+        elif (data_path / _PROJECT_MARKER).is_file():
+            project_root = data_path
+
+    # 2. Then check FRAUD_PLATFORM_ROOT (deprecated fallback, print a warning)
+    if project_root is None and fraud_platform_root_str and fraud_platform_root_str.strip():
+        import warnings
+
+        warnings.warn(
+            "FRAUD_PLATFORM_ROOT is deprecated; use FRP_* roots instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        print("Warning: FRAUD_PLATFORM_ROOT is deprecated; use FRP_* roots instead.")
+        candidate = Path(fraud_platform_root_str.strip()).expanduser().resolve()
+        if (candidate / _PROJECT_MARKER).is_file():
+            project_root = candidate
+
+    # 3. Otherwise: fallback to default Colab path, cwd, or derive from __file__
+    if project_root is None:
+        default_colab_path = Path(_DEFAULT_COLAB_PROJECT_ROOT).resolve()
+        if (default_colab_path / _PROJECT_MARKER).is_file():
+            project_root = default_colab_path
+        else:
+            # Check cwd and parents first
+            cwd = Path.cwd().resolve()
+            for candidate in (cwd, *cwd.parents):
+                if (candidate / _PROJECT_MARKER).is_file():
+                    project_root = candidate
+                    break
+            else:
+                # Derive from __file__ (walk up to find pyproject.toml)
+                source_path = Path(__file__).resolve()
+                for candidate in (source_path, *source_path.parents):
+                    if (candidate / _PROJECT_MARKER).is_file():
+                        project_root = candidate
+                        break
 
     # Verify the project root actually exists and contains the marker file
-    if not (project_root / _PROJECT_MARKER).is_file():
-        # If the default path doesn't work, try to find it from cwd
-        cwd = Path.cwd().resolve()
-        for candidate in (cwd, *cwd.parents):
-            if (candidate / _PROJECT_MARKER).is_file():
-                project_root = candidate
-                break
-        else:
-            # Cannot find project root; exit gracefully without changing state
-            return
+    if project_root is None or not (project_root / _PROJECT_MARKER).is_file():
+        # Cannot find project root; exit gracefully without changing state
+        return
 
     # -------------------------------------------------------------------------
     # Configure Environment
@@ -110,6 +143,27 @@ def setup_colab_environment() -> None:
 # =============================================================================
 
 
+class EnvironmentSnapshot(dict[str, str | bool]):
+    """Environment dictionary with case-insensitive key lookup for FRP_* variables."""
+
+    def __getitem__(self, key: str) -> str | bool:
+        if key in self:
+            return super().__getitem__(key)
+        lower_key = key.lower()
+        if lower_key in self:
+            return super().__getitem__(lower_key)
+        upper_key = key.upper()
+        if upper_key in self:
+            return super().__getitem__(upper_key)
+        return super().__getitem__(key)
+
+    def get(self, key: str, default: str | bool | None = None) -> str | bool | None:
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+
 def check_environment() -> dict[str, str | bool]:
     """
     Return a snapshot of the current runtime environment.
@@ -120,14 +174,19 @@ def check_environment() -> dict[str, str | bool]:
     project_root = os.getenv("FRAUD_PLATFORM_ROOT", "Not Set")
     src_path = str(Path(project_root) / "src") if project_root != "Not Set" else "Not Set"
 
-    return {
-        "runtime": "colab" if is_colab() else "local",
-        "python_version": platform.python_version(),
-        "platform": platform.system(),
-        "cwd": os.getcwd(),
-        "project_root": project_root,
-        "src_in_sys_path": src_path in sys.path,
-    }
+    return EnvironmentSnapshot(
+        {
+            "runtime": "colab" if is_colab() else "local",
+            "python_version": platform.python_version(),
+            "platform": platform.system(),
+            "cwd": os.getcwd(),
+            "project_root": project_root,
+            "src_in_sys_path": src_path in sys.path,
+            "frp_data_root": os.getenv("FRP_DATA_ROOT", "Not Set"),
+            "frp_models_root": os.getenv("FRP_MODELS_ROOT", "Not Set"),
+            "frp_evidence_root": os.getenv("FRP_EVIDENCE_ROOT", "Not Set"),
+        }
+    )
 
 
 # =============================================================================

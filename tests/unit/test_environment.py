@@ -1,5 +1,5 @@
 # =============================================================================
-# tests/test_colab_setup.py
+# tests/unit/test_environment.py
 # =============================================================================
 """
 Comprehensive unit tests for the runtime environment utilities.
@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from fraud_platform.common.colab_setup import (
+from fraud_risk_platform.common.environment import (
     check_environment,
     is_colab,
     setup_colab_environment,
@@ -31,13 +31,13 @@ from fraud_platform.common.colab_setup import (
 @pytest.fixture
 def mock_colab_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Mock the environment to simulate running inside Google Colab."""
-    monkeypatch.setattr("fraud_platform.common.colab_setup.is_colab", lambda: True)
+    monkeypatch.setattr("fraud_risk_platform.common.environment.is_colab", lambda: True)
 
 
 @pytest.fixture
 def mock_local_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Mock the environment to simulate running locally (not Colab)."""
-    monkeypatch.setattr("fraud_platform.common.colab_setup.is_colab", lambda: False)
+    monkeypatch.setattr("fraud_risk_platform.common.environment.is_colab", lambda: False)
 
 
 @pytest.fixture
@@ -97,7 +97,24 @@ class TestCheckEnvironment:
             "cwd",
             "project_root",
             "src_in_sys_path",
+            "frp_data_root",
+            "frp_models_root",
+            "frp_evidence_root",
         }
+
+    def test_check_environment_reports_frp_roots(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Verify check_environment reports FRP_* root paths when set."""
+        monkeypatch.setenv("FRP_DATA_ROOT", "/custom/data")
+        monkeypatch.setenv("FRP_MODELS_ROOT", "/custom/models")
+        monkeypatch.setenv("FRP_EVIDENCE_ROOT", "/custom/evidence")
+
+        env = check_environment()
+
+        assert env["frp_data_root"] == "/custom/data"
+        assert env["frp_models_root"] == "/custom/models"
+        assert env["frp_evidence_root"] == "/custom/evidence"
 
     def test_check_environment_identifies_local_runtime(self) -> None:
         """Verify that the current test environment is identified as local."""
@@ -188,7 +205,7 @@ class TestSetupColabEnvironment:
         # Point the default Colab path to our temp project instead of
         # the hard-coded /content/... path, which is not portable.
         monkeypatch.setattr(
-            "fraud_platform.common.colab_setup._DEFAULT_COLAB_PROJECT_ROOT",
+            "fraud_risk_platform.common.environment._DEFAULT_COLAB_PROJECT_ROOT",
             str(fake_project),
         )
 

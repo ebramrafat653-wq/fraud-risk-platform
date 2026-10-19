@@ -1,5 +1,5 @@
 # =============================================================================
-# src/fraud_platform/config/settings.py
+# src/fraud_risk_platform/config/settings.py
 # =============================================================================
 """
 Centralized application configuration for the Fraud & Risk Platform.
@@ -174,6 +174,9 @@ class PathSettings:
     data_dir: Path
     logs_dir: Path
     artifacts_dir: Path
+    frp_data_root: Path | None = None
+    frp_models_root: Path | None = None
+    frp_evidence_root: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -188,6 +191,27 @@ class Settings:
     application: ApplicationSettings
     runtime: RuntimeSettings
     paths: PathSettings
+
+    @property
+    def frp_data_root(self) -> Path:
+        """Return the resolved FRP_DATA_ROOT path."""
+        if self.paths.frp_data_root is not None:
+            return self.paths.frp_data_root
+        return self.paths.data_dir
+
+    @property
+    def frp_models_root(self) -> Path:
+        """Return the resolved FRP_MODELS_ROOT path."""
+        if self.paths.frp_models_root is not None:
+            return self.paths.frp_models_root
+        return self.paths.project_root / "models"
+
+    @property
+    def frp_evidence_root(self) -> Path:
+        """Return the resolved FRP_EVIDENCE_ROOT path."""
+        if self.paths.frp_evidence_root is not None:
+            return self.paths.frp_evidence_root
+        return self.paths.project_root / "docs" / "evidence"
 
 
 # =============================================================================
@@ -293,11 +317,34 @@ def load_settings() -> Settings:
         ),
     )
 
+    frp_data_env = os.getenv("FRP_DATA_ROOT")
+    frp_models_env = os.getenv("FRP_MODELS_ROOT")
+    frp_evidence_env = os.getenv("FRP_EVIDENCE_ROOT")
+
+    frp_data_root = (
+        Path(frp_data_env.strip()).expanduser().resolve()
+        if frp_data_env and frp_data_env.strip()
+        else project_root / "data"
+    )
+    frp_models_root = (
+        Path(frp_models_env.strip()).expanduser().resolve()
+        if frp_models_env and frp_models_env.strip()
+        else project_root / "models"
+    )
+    frp_evidence_root = (
+        Path(frp_evidence_env.strip()).expanduser().resolve()
+        if frp_evidence_env and frp_evidence_env.strip()
+        else project_root / "docs" / "evidence"
+    )
+
     paths = PathSettings(
         project_root=project_root,
         data_dir=project_root / "data",
         logs_dir=project_root / "logs",
         artifacts_dir=project_root / "artifacts",
+        frp_data_root=frp_data_root,
+        frp_models_root=frp_models_root,
+        frp_evidence_root=frp_evidence_root,
     )
 
     return Settings(

@@ -1,5 +1,5 @@
 # =============================================================================
-# src/fraud_platform/common/logging.py
+# src/fraud_risk_platform/common/logging.py
 # =============================================================================
 """
 Centralized logging configuration for the Fraud & Risk Platform.
@@ -38,7 +38,7 @@ Usage
 -----
 Application entry point:
 
-    from fraud_platform.common.logging import get_logger, setup_logging
+    from fraud_risk_platform.common.logging import get_logger, setup_logging
 
     setup_logging()
     logger = get_logger(__name__)
@@ -46,7 +46,7 @@ Application entry point:
 
 Application module:
 
-    from fraud_platform.common.logging import get_logger
+    from fraud_risk_platform.common.logging import get_logger
 
     logger = get_logger(__name__)
     logger.info("Processing transaction")
@@ -59,7 +59,7 @@ This module assumes that the Fraud & Risk Platform owns the root logger when
 The ``force`` parameter intentionally allows the application to replace
 existing root handlers. This is useful when a host environment has already
 installed logging handlers, but it must only be used where the application
-explicitly owns the logging configuration.
+explicitly needs to take ownership of logging configuration.
 
 The module does not attempt to manage logging configuration performed by
 external applications after ``setup_logging()`` returns.
@@ -207,17 +207,12 @@ def setup_logging(
     # -------------------------------------------------------------------------
     # Validate logging level
     # -------------------------------------------------------------------------
-    # Python logging levels are represented by integers. Reject booleans even
-    # though bool is technically a subclass of int in Python.
-    # -------------------------------------------------------------------------
-
     if isinstance(level, bool) or not isinstance(level, int):
         raise TypeError(f"level must be an integer logging level, got {type(level).__name__}")
 
     # -------------------------------------------------------------------------
     # Configure the root logger atomically
     # -------------------------------------------------------------------------
-
     with _configure_lock:
         if _configured and not force:
             return
@@ -232,16 +227,28 @@ def setup_logging(
             log_file=log_file,
         )
 
-        # ``force=True`` intentionally gives the application ownership of the
-        # root logger configuration at the application boundary.
-        #
-        # This replaces existing root handlers, which may have been installed
-        # by environments such as Jupyter, Colab, pytest, or a host framework.
-        logging.basicConfig(
-            level=level,
-            handlers=handlers,
-            force=True,
-        )
+        # ---------------------------------------------------------------------
+        # Take explicit ownership of the root logger
+        # ---------------------------------------------------------------------
+        # Host environments like pytest, Jupyter, or Colab often install their 
+        # own handlers on the root logger. If we rely on logging.basicConfig 
+        # with force=False, it will silently do nothing when it detects existing 
+        # handlers.
+        # 
+        # To ensure predictable behavior and satisfy application-boundary 
+        # ownership, we manually clear existing handlers and configure the root 
+        # logger directly.
+        # ---------------------------------------------------------------------
+        root_logger = logging.getLogger()
+        
+        # Clear any existing handlers (e.g., pytest's LogCaptureHandler)
+        for handler in root_logger.handlers[:]:
+            root_logger.removeHandler(handler)
+            
+        root_logger.setLevel(level)
+        
+        for handler in handlers:
+            root_logger.addHandler(handler)
 
         _configured = True
 
@@ -337,25 +344,16 @@ def _build_handlers(
     # -------------------------------------------------------------------------
     # Console Handler
     # -------------------------------------------------------------------------
-    # stdout keeps logs visible in local terminals, notebooks, containers,
-    # and CI environments.
-    # -------------------------------------------------------------------------
-
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
-
     handlers.append(console_handler)
 
     # -------------------------------------------------------------------------
     # Optional File Handler
     # -------------------------------------------------------------------------
-
     if log_file is not None:
         log_path = Path(log_file)
 
-        # ``Path(".")`` indicates that the file is located directly in the
-        # current working directory and therefore requires no directory
-        # creation.
         if log_path.parent != Path("."):
             log_path.parent.mkdir(
                 parents=True,
@@ -366,9 +364,7 @@ def _build_handlers(
             filename=log_path,
             encoding="utf-8",
         )
-
         file_handler.setFormatter(formatter)
-
         handlers.append(file_handler)
 
     return handlers

@@ -91,7 +91,7 @@ dev = [
 #
 # fraud-risk-platform/
 # └── src/
-#     └── fraud_platform/
+#     └── fraud_risk_platform/
 #
 # Setuptools will automatically discover packages under src/.
 # -----------------------------------------------------------------------------

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from fraud_platform.config.settings import (
+from fraud_risk_platform.config.settings import (
     _get_bool_environment_value,
     _get_environment_value,
     _resolve_project_root,
@@ -159,7 +159,7 @@ def test_project_root_is_discovered_from_project_marker(
     """Verify project-root discovery through pyproject.toml."""
     project_root = tmp_path / "project"
 
-    source_dir = project_root / "src" / "fraud_platform" / "config"
+    source_dir = project_root / "src" / "fraud_risk_platform" / "config"
     source_dir.mkdir(parents=True)
 
     (project_root / "pyproject.toml").touch()
@@ -198,3 +198,42 @@ def test_settings_paths_are_absolute() -> None:
     assert settings.paths.data_dir.is_absolute()
     assert settings.paths.logs_dir.is_absolute()
     assert settings.paths.artifacts_dir.is_absolute()
+
+
+def test_frp_data_root_overrides_default(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Verify FRP_DATA_ROOT environment variable overrides the default path."""
+    custom_path = tmp_path / "custom_data"
+    monkeypatch.setenv("FRP_DATA_ROOT", str(custom_path))
+
+    settings = load_settings()
+
+    assert settings.frp_data_root == custom_path.resolve()
+
+
+def test_frp_models_root_overrides_default(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Verify FRP_MODELS_ROOT environment variable overrides the default path."""
+    custom_path = tmp_path / "custom_models"
+    monkeypatch.setenv("FRP_MODELS_ROOT", str(custom_path))
+
+    settings = load_settings()
+
+    assert settings.frp_models_root == custom_path.resolve()
+
+
+def test_frp_evidence_root_overrides_default(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Verify FRP_EVIDENCE_ROOT environment variable overrides the default path."""
+    custom_path = tmp_path / "custom_evidence"
+    monkeypatch.setenv("FRP_EVIDENCE_ROOT", str(custom_path))
+
+    settings = load_settings()
+
+    assert settings.frp_evidence_root == custom_path.resolve()
