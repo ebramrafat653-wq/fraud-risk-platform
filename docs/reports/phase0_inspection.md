@@ -39,3 +39,4 @@ Date: 2026-10-19
 ## Next action
 Run `python colab_setup.py` in a fresh Colab session; save screenshot as 
 docs/evidence/phase0b_colab_smoke.png. Then Gate P0 closes.
+
